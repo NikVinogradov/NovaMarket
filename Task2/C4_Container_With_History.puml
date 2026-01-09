@@ -1,0 +1,79 @@
+﻿@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+LAYOUT_WITH_LEGEND()
+
+Person(buyer, "Buyer", "Browses catalog and places orders")
+Person(seller, "Seller", "Manages products and fulfills orders")
+
+Container_Ext(mobile, "Mobile App", "iOS/Android", "Customer channel")
+Container_Ext(sellerPortal, "Seller Portal", "Web App", "Seller channel")
+
+System_Boundary(nm, "NovaMarket Marketplace") {
+  Container(api, "API Gateway", "NGINX", "Single entry point for clients")
+  Container(catalog, "Catalog Service", "Kotlin/Spring Boot", "Read-optimized catalog and search")
+  Container(product, "Product Service", "Kotlin/Spring Boot", "Product master data and media")
+  Container(price, "Pricing Service", "Kotlin/Spring Boot", "Prices and promos")
+  Container(review, "Review Service", "Kotlin/Spring Boot", "Ratings and reviews")
+  Container(inventory, "Inventory Service", "Kotlin/Spring Boot", "Stock levels and reservations")
+  Container(cart, "Cart Service", "Kotlin/Spring Boot", "User cart state")
+  Container(order, "Order Service", "Kotlin/Spring Boot", "Order lifecycle, status, and saga orchestration")
+  Container(orderHistory, "Order History Service", "Kotlin/Spring Boot", "Aggregated order history and details for buyers")
+  Container(payment, "Payment Service", "Kotlin/Spring Boot", "Payments and card binding")
+  Container(delivery, "Delivery Service", "Kotlin/Spring Boot", "Delivery request and tracking")
+  Container(notification, "Notification Service", "Kotlin/Spring Boot", "Seller and buyer notifications")
+  ContainerQueue(eventbus, "Event Bus", "Apache Kafka", "Domain and integration events")
+
+  ContainerDb(catalogDb, "Catalog Read Model", "PostgreSQL/Elastic", "Materialized catalog view")
+  ContainerDb(orderDb, "Orders DB", "PostgreSQL", "Orders and status")
+  ContainerDb(orderHistoryDb, "Order History Read Model", "PostgreSQL/Elastic", "Aggregated order history and item snapshots")
+  ContainerDb(cartDb, "Cart DB", "Redis", "Cart sessions")
+  ContainerDb(inventoryDb, "Inventory DB", "PostgreSQL", "Stock and reservations")
+  ContainerDb(reviewDb, "Review DB", "PostgreSQL", "Reviews and ratings")
+}
+
+System_Ext(paymentGateway, "Payment Gateway", "External payment provider")
+System_Ext(logistics, "Logistics Provider", "External delivery service")
+
+Rel(buyer, mobile, "Uses")
+Rel(seller, sellerPortal, "Uses")
+
+Rel(mobile, api, "HTTPS/JSON")
+Rel(sellerPortal, api, "HTTPS/JSON")
+
+Rel(api, catalog, "Queries catalog")
+Rel(api, cart, "Manages cart")
+Rel(api, order, "Places orders, checks status")
+Rel(api, orderHistory, "Reads order history")
+Rel(api, payment, "Downloads receipts, manages payments")
+Rel(api, review, "Reads/writes reviews")
+Rel(api, product, "Manages products")
+Rel(api, price, "Manages prices")
+
+Rel(catalog, catalogDb, "Reads/Writes")
+Rel(order, orderDb, "Reads/Writes")
+Rel(orderHistory, orderHistoryDb, "Reads/Writes")
+Rel(cart, cartDb, "Reads/Writes")
+Rel(inventory, inventoryDb, "Reads/Writes")
+Rel(review, reviewDb, "Reads/Writes")
+
+Rel(product, eventbus, "Publishes ProductCreated/ProductUpdated")
+Rel(price, eventbus, "Publishes PriceUpdated")
+Rel(inventory, eventbus, "Publishes StockChanged/InventoryReserved/InventoryFailed")
+Rel(review, eventbus, "Publishes ReviewPublished")
+Rel(order, eventbus, "Publishes OrderPlaced/OrderStatusChanged")
+Rel(payment, eventbus, "Publishes PaymentSucceeded/PaymentFailed")
+Rel(delivery, eventbus, "Publishes DeliveryRequested/DeliveryStatusChanged")
+
+Rel(eventbus, catalog, "Consumes Product*, Price*, Stock*, Review* events")
+Rel(eventbus, inventory, "Consumes OrderPlaced")
+Rel(eventbus, payment, "Consumes InventoryReserved")
+Rel(eventbus, delivery, "Consumes PaymentSucceeded")
+Rel(eventbus, order, "Consumes Inventory*/Payment*/Delivery* events")
+Rel(eventbus, orderHistory, "Consumes Order*/Payment*/Delivery* events")
+Rel(eventbus, notification, "Consumes Order*/Payment*/Delivery* events")
+Rel(eventbus, cart, "Consumes OrderPlaced (clear cart)")
+
+Rel(payment, paymentGateway, "Charges and stores card tokens", "HTTPS")
+Rel(delivery, logistics, "Creates shipment and tracks status", "HTTPS")
+
+@enduml
