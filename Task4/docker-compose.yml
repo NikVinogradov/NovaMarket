@@ -1,0 +1,18 @@
+services:
+  nginx-rate:
+    image: nginx:1.25-alpine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx-rate.conf:/etc/nginx/nginx.conf:ro
+      - ./rate-limiter.conf:/etc/nginx/rate-limiter.conf:ro
+    command: ["nginx", "-g", "daemon off;"]
+
+  nginx-cb:
+    image: nginx:1.25-alpine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx-cb.conf:/etc/nginx/nginx.conf:ro
+      - ./circuit-breaker.conf:/etc/nginx/circuit-breaker.conf:ro
+    command: ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,33 @@
+﻿@startuml
+title Order Saga - Success
+
+actor Buyer
+participant "Order Service" as OrderSvc
+queue "Event Bus\n(Kafka)" as Bus
+participant "Inventory Service" as InvSvc
+participant "Payment Service" as PaySvc
+participant "Delivery Service" as DelivSvc
+participant "Notification Service" as NotifSvc
+
+Buyer -> OrderSvc: Create order
+OrderSvc -> Bus: OrderPlaced
+
+Bus -> InvSvc: OrderPlaced
+InvSvc -> Bus: InventoryReserved
+
+Bus -> PaySvc: InventoryReserved
+PaySvc -> Bus: PaymentSucceeded
+
+Bus -> DelivSvc: PaymentSucceeded
+DelivSvc -> Bus: DeliveryRequested
+
+Bus -> OrderSvc: DeliveryRequested
+OrderSvc -> Bus: OrderStatusChanged (Paid, InDelivery)
+
+DelivSvc -> Bus: DeliveryStatusChanged (Shipped, Delivered)
+Bus -> OrderSvc: DeliveryStatusChanged
+OrderSvc -> Bus: OrderCompleted
+
+Bus -> NotifSvc: OrderStatusChanged
+Bus -> NotifSvc: OrderCompleted
+@enduml

@@ -1,0 +1,28 @@
+﻿@startuml
+title Order Saga - Payment Failed
+
+actor Buyer
+participant "Order Service" as OrderSvc
+queue "Event Bus\n(Kafka)" as Bus
+participant "Inventory Service" as InvSvc
+participant "Payment Service" as PaySvc
+participant "Notification Service" as NotifSvc
+
+Buyer -> OrderSvc: Create order
+OrderSvc -> Bus: OrderPlaced
+
+Bus -> InvSvc: OrderPlaced
+InvSvc -> Bus: InventoryReserved
+
+Bus -> PaySvc: InventoryReserved
+PaySvc -> Bus: PaymentFailed
+
+Bus -> InvSvc: PaymentFailed
+InvSvc -> Bus: InventoryReleased
+
+Bus -> OrderSvc: PaymentFailed
+OrderSvc -> Bus: OrderCancelled
+
+Bus -> NotifSvc: PaymentFailed
+Bus -> NotifSvc: OrderCancelled
+@enduml
